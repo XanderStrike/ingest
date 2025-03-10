@@ -7,12 +7,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 const (
 	uploadPath    = "./uploads"
-	maxUploadSize = 10 << 20 // 10 MB
 	templatesPath = "./templates"
 )
 
@@ -121,7 +119,7 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
-	
+
 	filePath := filepath.Join(absUploadPath, cleanFilename)
 
 	// Log the file path for debugging
