@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -29,6 +30,7 @@ func main() {
 	// Define routes
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/upload", uploadHandler)
+	http.HandleFunc("/delete", deleteHandler)
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadPath))))
 
 	// Start server
@@ -93,6 +95,42 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return success status (for XHR requests)
+	w.WriteHeader(http.StatusOK)
+}
+
+func deleteHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	filename := r.FormValue("filename")
+	if filename == "" {
+		http.Error(w, "Filename is required", http.StatusBadRequest)
+		return
+	}
+
+	// Prevent directory traversal attacks
+	filePath := filepath.Join(uploadPath, filepath.Clean(filename))
+	if !strings.HasPrefix(filePath, uploadPath) {
+		http.Error(w, "Invalid filename", http.StatusBadRequest)
+		return
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+
+	// Delete the file
+	if err := os.Remove(filePath); err != nil {
+		log.Printf("Error deleting file: %v", err)
+		http.Error(w, "Error deleting file", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success status
 	w.WriteHeader(http.StatusOK)
 }
 

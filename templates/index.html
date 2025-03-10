@@ -80,13 +80,38 @@
         .files li {
             padding: 8px 0;
             border-bottom: 1px solid #f5f5f5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .files a {
             color: #2196F3;
             text-decoration: none;
+            margin-right: 10px;
         }
         .files a:hover {
             text-decoration: underline;
+        }
+        .file-info {
+            display: flex;
+            align-items: center;
+        }
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+        .delete-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f;
         }
     </style>
 </head>
@@ -278,16 +303,27 @@
                     const doc = parser.parseFromString(html, 'text/html');
                     const links = doc.querySelectorAll('a');
                     
-                    links.forEach(link => {
-                        if (link.href.indexOf('?') === -1 && !link.textContent.includes('Parent Directory')) {
-                            const li = document.createElement('li');
-                            const a = document.createElement('a');
-                            a.href = link.href;
-                            a.textContent = link.textContent;
-                            li.appendChild(a);
-                            fileList.appendChild(li);
-                        }
-                    });
+                    // Get file info from the server
+                    fetch('/uploads/')
+                        .then(response => response.json())
+                        .catch(() => {
+                            // If JSON parsing fails, we're getting the old directory listing HTML
+                            // Process links from HTML as before
+                            links.forEach(link => {
+                                if (link.href.indexOf('?') === -1 && !link.textContent.includes('Parent Directory')) {
+                                    const fileName = link.textContent.trim();
+                                    addFileToList(fileName, link.href, 'Unknown');
+                                }
+                            });
+                        })
+                        .then(files => {
+                            if (files) {
+                                // If we got JSON data, use it
+                                files.forEach(file => {
+                                    addFileToList(file.name, `/uploads/${file.name}`, file.size);
+                                });
+                            }
+                        });
                     
                     if (fileList.children.length === 0) {
                         const li = document.createElement('li');
