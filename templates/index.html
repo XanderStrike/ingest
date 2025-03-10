@@ -291,6 +291,69 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
         
+        function addFileToList(fileName, fileUrl, fileSize) {
+            const li = document.createElement('li');
+            
+            // File info (name and link)
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'file-info';
+            
+            const a = document.createElement('a');
+            a.href = fileUrl;
+            a.textContent = fileName;
+            fileInfo.appendChild(a);
+            
+            // Add file size
+            const sizeSpan = document.createElement('span');
+            sizeSpan.className = 'file-size';
+            sizeSpan.textContent = typeof fileSize === 'number' ? formatFileSize(fileSize) : fileSize;
+            fileInfo.appendChild(sizeSpan);
+            
+            li.appendChild(fileInfo);
+            
+            // Delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.onclick = () => deleteFile(fileName, li);
+            li.appendChild(deleteBtn);
+            
+            fileList.appendChild(li);
+        }
+        
+        function deleteFile(fileName, listItem) {
+            if (!confirm(`Are you sure you want to delete ${fileName}?`)) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('filename', fileName);
+            
+            fetch('/delete', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Remove the item from the list
+                    listItem.remove();
+                    
+                    // If no files left, show message
+                    if (fileList.children.length === 0) {
+                        const li = document.createElement('li');
+                        li.textContent = 'No files uploaded yet';
+                        fileList.appendChild(li);
+                    }
+                } else {
+                    alert('Failed to delete file');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting file:', error);
+                alert('Error deleting file');
+            });
+        }
+        
         function refreshFileList() {
             // Clear current list
             fileList.innerHTML = '';
@@ -303,29 +366,27 @@
                     const doc = parser.parseFromString(html, 'text/html');
                     const links = doc.querySelectorAll('a');
                     
-                    // Get file info from the server
-                    fetch('/uploads/')
-                        .then(response => response.json())
-                        .catch(() => {
-                            // If JSON parsing fails, we're getting the old directory listing HTML
-                            // Process links from HTML as before
-                            links.forEach(link => {
-                                if (link.href.indexOf('?') === -1 && !link.textContent.includes('Parent Directory')) {
-                                    const fileName = link.textContent.trim();
+                    // Process links from HTML
+                    let hasFiles = false;
+                    links.forEach(link => {
+                        if (link.href.indexOf('?') === -1 && !link.textContent.includes('Parent Directory')) {
+                            hasFiles = true;
+                            const fileName = link.textContent.trim();
+                            
+                            // Get file size
+                            fetch(`/uploads/${fileName}`, { method: 'HEAD' })
+                                .then(response => {
+                                    const contentLength = response.headers.get('content-length');
+                                    const size = contentLength ? parseInt(contentLength, 10) : 'Unknown';
+                                    addFileToList(fileName, link.href, size);
+                                })
+                                .catch(() => {
                                     addFileToList(fileName, link.href, 'Unknown');
-                                }
-                            });
-                        })
-                        .then(files => {
-                            if (files) {
-                                // If we got JSON data, use it
-                                files.forEach(file => {
-                                    addFileToList(file.name, `/uploads/${file.name}`, file.size);
                                 });
-                            }
-                        });
+                        }
+                    });
                     
-                    if (fileList.children.length === 0) {
+                    if (!hasFiles) {
                         const li = document.createElement('li');
                         li.textContent = 'No files uploaded yet';
                         fileList.appendChild(li);
