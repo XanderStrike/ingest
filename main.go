@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 const (
@@ -113,10 +112,10 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 	// Prevent directory traversal attacks by cleaning the filename
 	// and ensuring it doesn't contain path separators
 	cleanFilename := filepath.Base(filename)
-	
+
 	// Create the full path to the file
 	filePath := filepath.Join(uploadPath, cleanFilename)
-	
+
 	// Log the file path for debugging
 	log.Printf("Attempting to delete file: %s", filePath)
 
