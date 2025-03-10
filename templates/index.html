@@ -326,6 +326,8 @@
                 return;
             }
             
+            console.log(`Attempting to delete file: ${fileName}`);
+            
             const formData = new FormData();
             formData.append('filename', fileName);
             
@@ -335,6 +337,7 @@
             })
             .then(response => {
                 if (response.ok) {
+                    console.log(`File deleted successfully: ${fileName}`);
                     // Remove the item from the list
                     listItem.remove();
                     
@@ -346,9 +349,10 @@
                     }
                 } else {
                     response.text().then(text => {
-                        console.error('Delete failed:', text);
+                        console.error(`Delete failed: ${text}`);
                         alert(`Failed to delete file: ${text}`);
-                    }).catch(() => {
+                    }).catch(err => {
+                        console.error('Error parsing response:', err);
                         alert('Failed to delete file');
                     });
                 }

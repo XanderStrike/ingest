@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -113,21 +114,51 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 	// and ensuring it doesn't contain path separators
 	cleanFilename := filepath.Base(filename)
 
-	// Create the full path to the file
-	filePath := filepath.Join(uploadPath, cleanFilename)
+	// Create the full path to the file using absolute paths
+	absUploadPath, err := filepath.Abs(uploadPath)
+	if err != nil {
+		log.Printf("Error getting absolute path: %v", err)
+		http.Error(w, "Server error", http.StatusInternalServerError)
+		return
+	}
+	
+	filePath := filepath.Join(absUploadPath, cleanFilename)
 
 	// Log the file path for debugging
 	log.Printf("Attempting to delete file: %s", filePath)
 
-	// Check if file exists
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		log.Printf("File not found: %s", filePath)
-		http.Error(w, "File not found", http.StatusNotFound)
+	// Check if file exists and is accessible
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Printf("File not found: %s", filePath)
+			http.Error(w, "File not found", http.StatusNotFound)
+		} else {
+			log.Printf("Error accessing file: %v", err)
+			http.Error(w, "Error accessing file", http.StatusInternalServerError)
+		}
 		return
 	}
 
+	// Verify it's a regular file, not a directory
+	if fileInfo.IsDir() {
+		log.Printf("Not a file: %s", filePath)
+		http.Error(w, "Not a file", http.StatusBadRequest)
+		return
+	}
+
+	// Try to open the file first to verify permissions
+	file, err := os.OpenFile(filePath, os.O_RDWR, 0666)
+	if err != nil {
+		log.Printf("Cannot open file (permission issue?): %v", err)
+		http.Error(w, "Permission denied", http.StatusInternalServerError)
+		return
+	}
+	file.Close()
+
 	// Delete the file
-	if err := os.Remove(filePath); err != nil {
+	err = os.Remove(filePath)
+	if err != nil {
 		log.Printf("Error deleting file: %v", err)
 		http.Error(w, "Error deleting file", http.StatusInternalServerError)
 		return
