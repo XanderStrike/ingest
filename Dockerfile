@@ -12,6 +12,7 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /app/ingest /app/ingest
+COPY templates/ /app/templates/
 
 # Create uploads directory
 RUN mkdir -p /app/uploads
