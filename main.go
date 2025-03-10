@@ -12,6 +12,7 @@ import (
 const (
 	uploadPath    = "./uploads"
 	templatesPath = "./templates"
+	staticPath    = "./templates"  // Using templates dir for static files too
 )
 
 func main() {
@@ -30,6 +31,7 @@ func main() {
 	http.HandleFunc("/upload", uploadHandler)
 	http.HandleFunc("/delete", deleteHandler)
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadPath))))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticPath))))
 
 	// Start server
 	port := getEnv("PORT", "8080")
