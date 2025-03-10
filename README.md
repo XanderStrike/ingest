@@ -2,6 +2,9 @@
 
 A hole you can drop files into. Saves them to a folder on your server, that's it.
 
+![demo](https://github.com/user-attachments/assets/f71afd16-a49b-490e-8a7e-7fe583dcff7d)
+
+
 ### Run
 
 ```bash
