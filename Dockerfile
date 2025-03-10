@@ -5,17 +5,17 @@ WORKDIR /app
 COPY go.mod ./
 COPY main.go ./
 
-RUN go build -o fileserver
+RUN go build -o ingest
 
 FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/fileserver /app/fileserver
+COPY --from=builder /app/ingest /app/ingest
 
 # Create uploads directory
 RUN mkdir -p /app/uploads
 
 EXPOSE 8080
 
-CMD ["/app/fileserver"]
+CMD ["/app/ingest"]
