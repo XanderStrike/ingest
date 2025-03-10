@@ -1,3 +1,3 @@
-module fileupload
+module ingest
 
 go 1.21
