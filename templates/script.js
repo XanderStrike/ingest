@@ -129,6 +129,18 @@ function uploadFile(file) {
                     uploadList.removeChild(uploadItem);
                 }, 300);
             }, 3000);
+        } else if (xhr.status === 413) {
+            status.textContent = 'File too large';
+            speedElement.textContent = '';
+            console.error('Upload failed: File too large');
+            
+            // Show error message
+            try {
+                const response = xhr.responseText;
+                alert(response || 'File too large');
+            } catch (e) {
+                alert('File too large');
+            }
         } else {
             status.textContent = 'Upload failed';
             console.error('Upload failed:', xhr.statusText);

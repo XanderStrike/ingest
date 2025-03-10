@@ -1,18 +1,21 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 const (
 	uploadPath    = "./uploads"
 	templatesPath = "./templates"
 	staticPath    = "./templates"  // Using templates dir for static files too
+	defaultMaxSize = 0             // 0 means unlimited
 )
 
 func main() {
@@ -32,6 +35,20 @@ func main() {
 	http.HandleFunc("/delete", deleteHandler)
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(uploadPath))))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticPath))))
+
+	// Get max file size from environment variable
+	maxSizeStr := getEnv("MAX_FILE_SIZE", "0")
+	maxSize, err := strconv.ParseInt(maxSizeStr, 10, 64)
+	if err != nil {
+		log.Printf("Invalid MAX_FILE_SIZE value: %s, using unlimited", maxSizeStr)
+		maxSize = defaultMaxSize
+	}
+	
+	if maxSize > 0 {
+		log.Printf("Maximum file size set to %s", formatBytes(maxSize))
+	} else {
+		log.Printf("Maximum file size: unlimited")
+	}
 
 	// Start server
 	port := getEnv("PORT", "8080")
@@ -72,9 +89,27 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get max file size from environment variable
+	maxSizeStr := getEnv("MAX_FILE_SIZE", "0")
+	maxSize, err := strconv.ParseInt(maxSizeStr, 10, 64)
+	if err != nil {
+		log.Printf("Invalid MAX_FILE_SIZE value: %s, using unlimited", maxSizeStr)
+		maxSize = defaultMaxSize
+	}
+
+	// If maxSize is set, limit the request body size
+	if maxSize > 0 {
+		r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+	}
+
 	// Get file from request
 	file, handler, err := r.FormFile("file")
 	if err != nil {
+		if err.Error() == "http: request body too large" {
+			log.Printf("File too large: %s", handler.Filename)
+			http.Error(w, fmt.Sprintf("File too large. Maximum size is %s", formatBytes(maxSize)), http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(w, "Error retrieving file", http.StatusBadRequest)
 		return
 	}
@@ -90,6 +125,11 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Copy file contents
 	if _, err := io.Copy(dst, file); err != nil {
+		if err.Error() == "http: request body too large" {
+			os.Remove(filepath.Join(uploadPath, handler.Filename))
+			http.Error(w, fmt.Sprintf("File too large. Maximum size is %s", formatBytes(maxSize)), http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(w, "Error saving file", http.StatusInternalServerError)
 		return
 	}
@@ -174,4 +214,18 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// formatBytes converts bytes to a human-readable format
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
