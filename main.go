@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	uploadPath = "./uploads"
+	uploadPath    = "./uploads"
 	maxUploadSize = 10 << 20 // 10 MB
 )
 
@@ -36,7 +36,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	html := `
 <!DOCTYPE html>
 <html>
@@ -124,13 +124,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Limit upload size
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
-	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		http.Error(w, "File too large (max 10MB)", http.StatusBadRequest)
 		return
 	}
 
