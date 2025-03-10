@@ -106,7 +106,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	file, handler, err := r.FormFile("file")
 	if err != nil {
 		if err.Error() == "http: request body too large" {
-			log.Printf("File too large: %s", handler.Filename)
+			log.Printf("File too large")
 			http.Error(w, fmt.Sprintf("File too large. Maximum size is %s", formatBytes(maxSize)), http.StatusRequestEntityTooLarge)
 			return
 		}
