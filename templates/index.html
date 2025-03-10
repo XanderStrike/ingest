@@ -345,7 +345,12 @@
                         fileList.appendChild(li);
                     }
                 } else {
-                    alert('Failed to delete file');
+                    response.text().then(text => {
+                        console.error('Delete failed:', text);
+                        alert(`Failed to delete file: ${text}`);
+                    }).catch(() => {
+                        alert('Failed to delete file');
+                    });
                 }
             })
             .catch(error => {

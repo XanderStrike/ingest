@@ -110,15 +110,19 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Prevent directory traversal attacks
-	filePath := filepath.Join(uploadPath, filepath.Clean(filename))
-	if !strings.HasPrefix(filePath, uploadPath) {
-		http.Error(w, "Invalid filename", http.StatusBadRequest)
-		return
-	}
+	// Prevent directory traversal attacks by cleaning the filename
+	// and ensuring it doesn't contain path separators
+	cleanFilename := filepath.Base(filename)
+	
+	// Create the full path to the file
+	filePath := filepath.Join(uploadPath, cleanFilename)
+	
+	// Log the file path for debugging
+	log.Printf("Attempting to delete file: %s", filePath)
 
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		log.Printf("File not found: %s", filePath)
 		http.Error(w, "File not found", http.StatusNotFound)
 		return
 	}
@@ -130,6 +134,7 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("Successfully deleted file: %s", cleanFilename)
 	// Return success status
 	w.WriteHeader(http.StatusOK)
 }
